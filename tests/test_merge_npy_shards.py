@@ -1,5 +1,4 @@
 """Tests for equal-slab shard merge (rung 3)."""
-from __future__ import annotations
 
 import sys
 import tempfile
@@ -11,13 +10,13 @@ _ROOT = Path(__file__).resolve().parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from merge_npy_shards import (  # noqa: E402
+from numpy_mpi.merge_npy_shards import (
     discover_shards,
     expected_global_marker,
     merge_equal_slabs,
     write_fake_shards,
 )
-from npy_names import format_npy_shard_name  # noqa: E402
+from numpy_mpi.npy_names import format_npy_shard_name
 
 
 def expect_ok(cond: bool, msg: str) -> None:
@@ -58,10 +57,12 @@ def main() -> None:
         expect_ok(np.array_equal(g, want), "marker mismatch")
         expect_ok(g[0, 0, 0] == 0.0, "corner")
         # last global index in i: 5, j: 7, k: 4 -> 100*5 + 10*7 + 4 = 574
-        expect_ok(g[-1, -1, -1] == np.dtype(dtype).type(574), f"end {g[-1,-1,-1]}")
+        expect_ok(g[-1, -1, -1] == np.dtype(dtype).type(574), f"end {g[-1, -1, -1]}")
 
         # --- fail loud: missing shard ---
-        missing_paths = [p for p in found if p.name != format_npy_shard_name(field, 1, 1, 0)]
+        missing_paths = [
+            p for p in found if p.name != format_npy_shard_name(field, 1, 1, 0)
+        ]
         expect_raises(merge_equal_slabs, missing_paths, field=field)
 
         # --- fail loud: duplicate coord ---
@@ -85,7 +86,9 @@ def main() -> None:
         )
         g2 = merge_equal_slabs(discover_shards(td_path, "c"), field="c")
         expect_ok(g2.shape == (4, 4, 4), f"2x2x2 shape {g2.shape}")
-        expect_ok(np.array_equal(g2, expected_global_marker((2, 2, 2), (2, 2, 2))), "2x2x2")
+        expect_ok(
+            np.array_equal(g2, expected_global_marker((2, 2, 2), (2, 2, 2))), "2x2x2"
+        )
 
     print("OK merge equal slabs (rung 3)")
 

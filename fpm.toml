@@ -18,8 +18,8 @@ mpi = "*"
 stdlib = "*"
 
 [fortran]
-implicit-typing = false
-implicit-external = false
+implicit-typing = true
+implicit-external = true
 source-form = "free"
 
 [extra.fortitude.check]

@@ -10,9 +10,8 @@ Format (normative):
 
 Topology is assumed given. This module does not talk to MPI.
 """
-from __future__ import annotations
-
 import re
+import sys
 from dataclasses import dataclass
 
 # Full match on basename (no directories).
@@ -92,8 +91,6 @@ def roundtrip_name(field: str, i: int, j: int, k: int) -> NpyShardName:
 
 
 if __name__ == "__main__":
-    import sys
-
     args = sys.argv[1:]
     if not args:
         print(

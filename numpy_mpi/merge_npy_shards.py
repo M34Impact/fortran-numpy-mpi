@@ -7,15 +7,17 @@ Assumes:
 - axis order matches Fortran/NumPy a[i,j,k], no transpose
 - dtype preserved from shards (typically float32)
 """
-from __future__ import annotations
-
-from collections import defaultdict
+import sys
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 import numpy as np
 
-from npy_names import NpyShardName, parse_npy_shard_name
+from numpy_mpi.npy_names import (
+    NpyShardName,
+    format_npy_shard_name,
+    parse_npy_shard_name,
+)
 
 
 def _as_path_list(paths: Iterable[str | Path]) -> list[Path]:
@@ -132,8 +134,6 @@ def write_fake_shards(
         v = 1000*I + 10*J + K
     (fits exactly in float32 for small test grids).
     """
-    from npy_names import format_npy_shard_name
-
     d = Path(directory)
     d.mkdir(parents=True, exist_ok=True)
     npx, npy_, npz = nproc
@@ -180,8 +180,6 @@ def expected_global_marker(
 
 
 if __name__ == "__main__":
-    import sys
-
     args = sys.argv[1:]
     if len(args) < 2:
         print(

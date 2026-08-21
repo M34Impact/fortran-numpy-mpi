@@ -10,7 +10,7 @@ _ROOT = Path(__file__).resolve().parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from merge_npy_shards import (  # noqa: E402
+from numpy_mpi.merge_npy_shards import (
     discover_shards,
     expected_global_marker,
     merge_equal_slabs,

@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Serial exercise of the npy dump ladder (rungs 1–4 + MPI smoke).
+# Serial exercise of the npy dump ladder (Python package + fpm + MPI smoke).
 # Run from repo root. Fail-loud: first failure exits non-zero.
 #
 # Usage:
-#   ./helpers/run_npy_tests.sh
-#   ./helpers/run_npy_tests.sh --skip-mpi
-#   ./helpers/run_npy_tests.sh --skip-fpm
-#   NP=4 FPM_FLAG="-L./lib" ./helpers/run_npy_tests.sh
+#   ./scripts/run_npy_tests.sh
+#   ./scripts/run_npy_tests.sh --skip-mpi
+#   ./scripts/run_npy_tests.sh --skip-fpm
+#   NP=4 FPM_FLAG="-L./lib" ./scripts/run_npy_tests.sh
 #
 # Env:
 #   NP          MPI ranks for cart smoke (default 4 = 2x2x1)
@@ -16,11 +16,15 @@
 #   MPIRUN_ARGS extra runner-args (default: bind/map if using mpirun)
 #   PYTHON      python (default: python3 then python)
 #   KEEP_SMOKE  if 1, leave _npy_mpi_smoke/ and merged artifacts
+#   PYTHONPATH  defaults to repo root so `import numpy_mpi` works without install
 
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
+
+# Package imports: numpy_mpi/ at repo root
+export PYTHONPATH="${ROOT}${PYTHONPATH:+:${PYTHONPATH}}"
 
 SKIP_MPI=0
 SKIP_FPM=0
@@ -29,7 +33,7 @@ for arg in "$@"; do
     --skip-mpi) SKIP_MPI=1 ;;
     --skip-fpm) SKIP_FPM=1 ;;
     -h|--help)
-      sed -n '2,20p' "$0"
+      sed -n '2,22p' "$0"
       exit 0
       ;;
     *)
@@ -95,7 +99,6 @@ cleanup() {
   fi
   rm -rf "$SMOKE_DIR"
   rm -f \
-    "${SMOKE_DIR%/}_temperature_global.npy" \
     temperature_global_smoke.npy \
     npy_mpi_smoke_viz.png \
     marker_3d.npy marker_3d_sp.npy \
@@ -105,39 +108,60 @@ cleanup() {
 need_cmd "$PY"
 
 echo "ROOT=$ROOT"
-echo "PY=$PY  FPM=$FPM  SKIP_FPM=$SKIP_FPM  SKIP_MPI=$SKIP_MPI  NP=$NP"
+echo "PY=$PY  PYTHONPATH=$PYTHONPATH"
+echo "FPM=$FPM  SKIP_FPM=$SKIP_FPM  SKIP_MPI=$SKIP_MPI  NP=$NP"
 
 # ---------------------------------------------------------------------------
 # Python unit tests (no compiler)
 # ---------------------------------------------------------------------------
 section "Python npy_names"
-run "$PY" helpers/test_npy_names.py
+run "$PY" tests/test_npy_names.py
 
 section "Python equal-slab merge"
-run "$PY" helpers/test_merge_npy_shards.py
+run "$PY" tests/test_merge_npy_shards.py
 
 section "Python merge CLI smoke (fake shards)"
 FAKE="$(mktemp -d "${TMPDIR:-/tmp}/npy_fake.XXXXXX")"
 run "$PY" - <<PY
 from pathlib import Path
-import sys
-sys.path.insert(0, "helpers")
-from merge_npy_shards import write_fake_shards
-write_fake_shards(Path("$FAKE"), field="$FIELD", nproc=($NPX, $NPY, $NPZ),
-                  local_shape=($NX, $NY, $NZ))
+from numpy_mpi.merge_npy_shards import write_fake_shards
+write_fake_shards(
+    Path("$FAKE"),
+    field="$FIELD",
+    nproc=($NPX, $NPY, $NPZ),
+    local_shape=($NX, $NY, $NZ),
+)
 print("wrote fake shards -> $FAKE")
 PY
-run "$PY" helpers/merge_npy_shards.py "$FIELD" "$FAKE"
-run "$PY" helpers/check_mpi_npy_smoke.py "$FAKE" "$NPX" "$NPY" "$NPZ" "$NX" "$NY" "$NZ" "$FIELD"
+run "$PY" -m numpy_mpi.merge_npy_shards "$FIELD" "$FAKE"
+if [[ -f numpy_mpi/check_mpi_npy_smoke.py ]]; then
+  run "$PY" -m numpy_mpi.check_mpi_npy_smoke \
+    "$FAKE" "$NPX" "$NPY" "$NPZ" "$NX" "$NY" "$NZ" "$FIELD"
+else
+  run "$PY" - <<PY
+from pathlib import Path
+import numpy as np
+from numpy_mpi.merge_npy_shards import (
+    discover_shards,
+    merge_equal_slabs,
+    expected_global_marker,
+)
+d = Path("$FAKE")
+g = merge_equal_slabs(discover_shards(d, "$FIELD"), field="$FIELD")
+want = expected_global_marker(($NPX, $NPY, $NPZ), ($NX, $NY, $NZ), dtype=np.float32)
+assert g.shape == want.shape and np.array_equal(g, want), (g.shape, g[-1,-1,-1], want[-1,-1,-1])
+print("OK inline smoke check", g.shape, g.dtype, float(g[-1,-1,-1]))
+PY
+fi
 MERGED_FAKE="$FAKE/${FIELD}_global.npy"
-run "$PY" helpers/merge_npy_shards.py "$FIELD" "$FAKE" "$MERGED_FAKE"
-run "$PY" helpers/viz_npy_field.py "$MERGED_FAKE" --out "$FAKE/viz.png"
+run "$PY" -m numpy_mpi.merge_npy_shards "$FIELD" "$FAKE" "$MERGED_FAKE"
+run "$PY" -m numpy_mpi.viz_npy_field "$MERGED_FAKE" --out "$FAKE/viz.png"
 echo "OK fake merge+viz ($FAKE/viz.png)"
 rm -rf "$FAKE"
 
 section "Python npy_names CLI"
-run "$PY" helpers/npy_names.py --format "$FIELD" 1 2 0
-run "$PY" helpers/npy_names.py "${FIELD}__i1_j2_k0.npy"
+run "$PY" -m numpy_mpi.npy_names --format "$FIELD" 1 2 0
+run "$PY" -m numpy_mpi.npy_names "${FIELD}__i1_j2_k0.npy"
 
 # ---------------------------------------------------------------------------
 # Fortran via fpm (optional)
@@ -152,7 +176,6 @@ else
     FPM_COMMON+=(--flag "$FPM_FLAG")
   fi
 
-  # Serial fpm tests: prefer named targets when present; else full `fpm test`.
   SERIAL_TARGETS=()
   for t in test_npy_names test_npy_dump_field test_npy_marker; do
     if [[ -f "test/${t}.f90" ]]; then
@@ -163,7 +186,6 @@ else
   if ((${#SERIAL_TARGETS[@]} > 0)); then
     for t in "${SERIAL_TARGETS[@]}"; do
       section "fpm test --target $t (serial)"
-      # np 1 runner keeps MPI-linked binaries honest if the package always links MPI
       if command -v "$MPIRUN" >/dev/null 2>&1; then
         run "$FPM" "${FPM_COMMON[@]}" --target "$t" \
           --runner "$MPIRUN" --runner-args " -np 1"
@@ -180,14 +202,9 @@ else
     fi
   fi
 
-  # Optional marker python check if files appeared
   if [[ -f marker_3d.npy ]] || [[ -f marker_3d_sp.npy ]]; then
-    section "Python marker check (if helper present)"
-    if [[ -f helpers/check_npy_marker.py ]]; then
-      [[ -f marker_3d.npy ]] && run "$PY" helpers/check_npy_marker.py marker_3d.npy
-      [[ -f marker_3d_sp.npy ]] && run "$PY" helpers/check_npy_marker.py marker_3d_sp.npy
-    else
-      run "$PY" - <<'PY'
+    section "Python marker check"
+    run "$PY" - <<'PY'
 import numpy as np
 from pathlib import Path
 for p in ["marker_3d.npy", "marker_3d_sp.npy"]:
@@ -200,12 +217,11 @@ for p in ["marker_3d.npy", "marker_3d_sp.npy"]:
     assert a[-1, -1, -1] == 345
     print(f"OK marker {p} shape={a.shape} dtype={a.dtype}")
 PY
-    fi
   fi
 
   if [[ -f temperature__i1_j2_k0.npy ]]; then
     section "Python parse dump-field artifact"
-    run "$PY" helpers/npy_names.py temperature__i1_j2_k0.npy
+    run "$PY" -m numpy_mpi.npy_names temperature__i1_j2_k0.npy
   fi
 fi
 
@@ -237,10 +253,29 @@ else
 
   section "merge MPI shards + check + viz"
   MERGED="${SMOKE_DIR}/${FIELD}_global.npy"
-  run "$PY" helpers/merge_npy_shards.py "$FIELD" "$SMOKE_DIR" "$MERGED"
-  run "$PY" helpers/check_mpi_npy_smoke.py \
-    "$SMOKE_DIR" "$NPX" "$NPY" "$NPZ" "$NX" "$NY" "$NZ" "$FIELD"
-  run "$PY" helpers/viz_npy_field.py "$MERGED" --out npy_mpi_smoke_viz.png
+  run "$PY" -m numpy_mpi.merge_npy_shards "$FIELD" "$SMOKE_DIR" "$MERGED"
+  if [[ -f numpy_mpi/check_mpi_npy_smoke.py ]]; then
+    run "$PY" -m numpy_mpi.check_mpi_npy_smoke \
+      "$SMOKE_DIR" "$NPX" "$NPY" "$NPZ" "$NX" "$NY" "$NZ" "$FIELD"
+  else
+    run "$PY" - <<PY
+from pathlib import Path
+import numpy as np
+from numpy_mpi.merge_npy_shards import (
+    discover_shards,
+    merge_equal_slabs,
+    expected_global_marker,
+)
+d = Path("$SMOKE_DIR")
+g = merge_equal_slabs(discover_shards(d, "$FIELD"), field="$FIELD")
+want = expected_global_marker(($NPX, $NPY, $NPZ), ($NX, $NY, $NZ), dtype=np.float32)
+assert g.shape == want.shape and np.array_equal(g, want), (
+    g.shape, float(g.flat[0]), float(g.flat[-1]), float(want.flat[-1])
+)
+print("OK MPI smoke merge", g.shape, g.dtype, float(g[-1, -1, -1]))
+PY
+  fi
+  run "$PY" -m numpy_mpi.viz_npy_field "$MERGED" --out npy_mpi_smoke_viz.png
   echo "OK MPI smoke artifacts: $SMOKE_DIR/  $MERGED  npy_mpi_smoke_viz.png"
 fi
 

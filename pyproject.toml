@@ -26,3 +26,10 @@ dev = [
     "pre-commit",
     "fortitude-lint",
 ]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "ruff>=0.16.4",
+    "ty>=0.0.73",
+]

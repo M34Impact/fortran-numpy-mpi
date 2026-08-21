@@ -5,6 +5,7 @@ from pathlib import Path
 
 import numpy as np
 
+
 def marker_value(i: int, j: int, k: int) -> float:
     """1-based i,j,k — must match test_npy_marker.f90."""
     return 100.0 * i + 10.0 * j + float(k)

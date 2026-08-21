@@ -9,7 +9,7 @@ _ROOT = Path(__file__).resolve().parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from npy_names import (  # noqa: E402
+from numpy_mpi.npy_names import (
     NpyShardName,
     format_npy_shard_name,
     parse_npy_shard_name,

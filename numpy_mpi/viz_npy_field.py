@@ -5,13 +5,13 @@ Examples:
   python helpers/viz_npy_field.py _npy_mpi_smoke --field temperature --merge
   python helpers/viz_npy_field.py merged.npy --out smoke_viz.png
 """
-from __future__ import annotations
-
 import argparse
 import sys
 from pathlib import Path
 
 import numpy as np
+
+from numpy_mpi.merge_npy_shards import discover_shards, merge_equal_slabs
 
 _ROOT = Path(__file__).resolve().parent
 if str(_ROOT) not in sys.path:
@@ -20,8 +20,6 @@ if str(_ROOT) not in sys.path:
 
 def _load_array(path: Path, *, field: str | None, do_merge: bool) -> tuple[np.ndarray, str]:
     if do_merge or path.is_dir():
-        from merge_npy_shards import discover_shards, merge_equal_slabs
-
         if not field:
             raise SystemExit("--field is required when merging a directory")
         paths = discover_shards(path, field)
