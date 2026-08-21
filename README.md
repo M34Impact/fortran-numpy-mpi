@@ -1,178 +1,165 @@
-# Fortran Project Template
+# fortran-numpy-mpi
 
-Modern Fortran development made simple - an opinionated, batteries-included project template that brings contemporary development practices to Fortran projects.
+Dump Euclidean 3D field data from MPI Fortran to NumPy `.npy` shards, then merge them in Python for analysis.
 
-- [Why This Template?](#why-this-template)
-- [Getting Started](#getting-started)
-- [Style Guide and Best Practices](#style-guide-and-best-practices)
-- [Development Tools](#development-tools)
-- [Documentation](#documentation)
-- [Contributing](#contributing)
-- [License](#license)
-- [Appendix](#appendix)
+## Problem
 
-## Why This Template?
+Distributed CFD/structural solvers hold fields as per-rank arrays with halos. Writing a single global file from rank 0 requires gathers, extra buffers, and often a custom binary format. Post-processing already lives in Python/NumPy. The missing piece is a small, explicit path:
 
-Fortran remains a crucial language in scientific computing, engineering, and high-performance computing. However, while the language has modernized significantly, the development workflow often lags behind contemporary software engineering practices. This template bridges that gap by providing:
+1. Each rank writes **owned** cells only to a shard file whose name encodes its place in the process grid.
+2. A Python helper loads those shards and assembles one global `ndarray`.
 
-- modern development features like code completion, automated testing, and documentation generation out of the box.
-- seamless integration of Fortran codebases with modern DevOps practices, including continuous integration, code quality checks, and automated documentation.
-- IDE-like tooling integration with VS Code and extensions.
+## Scope
 
-### Key Benefits
+- 3D Cartesian MPI topology with 0-based coords in filenames
+- SP / DP / default `integer` rank-3 dumps via *single* generic interface
+- Owned-only slices (caller strips halos)
+- Equal-slab merge and name parse/format in Python
+- Activation by editing the solver call site
+- Axis order matches Fortran and NumPy without transpose: `a(i,j,k)` ↔ `a[i,j,k]`.
 
-- 🚀 **Instant Modern Setup**: Get a fully configured development environment in minutes, not days
-- 🔍 **Code Intelligence**: Real-time error detection, code completion, and refactoring support via VS Code integration
-- 📊 **Quality Assurance**: Automated testing, formatting, and linting integrated with git workflow
-- 📚 **Automated Documentation**: Generate professional documentation from your code comments
-- 🛠️ **Best Practices Built-in**: Pre-configured tools enforce consistent code style and quality
-- 🔄 **Modern Workflow**: Brings git-based workflow, dependency management, and automated builds to Fortran
+### Out of scope
 
-### Traditional vs Modern Fortran Development
+- Unequal local sizes (v1 assumes equal slabs)
+- Automatic timestep directory policy
+- Silent rename of illegal field names
+- True 4D multi-field dumps
+- Namelist / JSON switches
 
-| Aspect | Traditional Approach | With This Template |
-|--------|---------------------|-------------------|
-| Setup Time | Hours/days configuring tools | Minutes with pre-configured environment |
-| Error Detection | At compile time | Real-time as you type |
-| Code Style | Manual enforcement | Automated formatting and checks |
-| Documentation | Manual maintenance | Generated from code comments |
-| Testing | Often manual or ad-hoc | Automated with each commit |
-| Dependencies | Manual management | Handled by package manager |
+## Filename contract
 
-## Getting Started
-
-### Prerequisites
-
-- Linux OS or WSL2 via Windows
-- GFortran or oneAPI Fortran compiler
-
-#### Optional
-
-- VS Code installation
-- Modern Fortran extension installation
-
-### Step-by-step instructions
-
-0. Load compiler modules (if on a compute cluster):
-
-    ```sh
-    module load gcc
-    # or
-    module load intel
-    ```
-
-1. Create and activate a Python environment:
-
-    ```sh
-    python3 -m venv .venv
-    source .venv/bin/activate
-    ```
-
-    Remember to activate your enviroment before runtime or development tasks.
-
-2. Install the runtime and development packages:
-
-    ```sh
-    pip3 install .  # Install runtime dependencies from pyproject.toml
-    pip3 install .[dev]  # Install development dependencies
-    ```
-
-3. Run the tests and main program:
-
-    ```sh
-    fpm test  # by default it uses gcc/gfortran to compile and run
-    fpm run
-    ```
-
-4. Migrate your project:
-
-    See a step-by-step guide on how to [migrate your project](./docs/MIGRATION.md).
-
-## Style Guide and Best Practices
-
-The integrated tooling has been configured to automatically conform the code to a set of prescribed rules.
-
-These rules are roughly outlined in the [STYLE_GUIDE.md](./docs/STYLE_GUIDE.md).
-
-## Development Tools
-
-The template includes preconfigured development tools and settings for Modern Fortran development, with configurations for:
-
-- VS Code integration with Modern Fortran extension
-- Language server features with `fortls`
-- Code formatting with `fprettify`
-- Automated testing with `fpm test`
-- Package management with `fpm`
-
-For detailed setup instructions and tool configurations, see [TOOLING.md](./docs/TOOLING.md).
-
-### Profiling
-
-For information on profiling, see [PROFILING.md](./docs/PROFILING.md).
-
-## Documentation
-
-Automated documentation is generated by using the [ford](https://github.com/Fortran-FOSS-Programmers/ford) package. For example config files and usage, see [here](https://forddocs.readthedocs.io/en/latest/index.html).
-
-To generate dcoumentation for this sample project, and then view it on the browser, run:
-
-```sh
-ford ford.md
-firefox docs/ford/index.html  # Alternatively, use your preferred browser
+```text
+{field}__i{i}_j{j}_k{k}.npy
 ```
 
-## Contributing
+- `field` — non-empty basename stem. Allowed characters: `[A-Za-z0-9_+=.-]`. No whitespace, path separators, `.npy` suffix, or substring `__i`. Invalid names fail with non-zero `stat` / `ValueError` (no underscore substitution).
+- `i`, `j`, `k` — non-negative **0-based** topology indices supplied by the caller.
 
-Contributions from the community are welcome. To contribute, consider opening an issue or pull request with changes and suggestions.
+Examples: `temperature__i0_j1_k0.npy`, `cell_state__i1_j0_k0.npy`.
+
+#### Legacy 1-based coords
+
+simply convert at the call site:
+
+```fortran
+rank_coords = [ip - 1, jp - 1, kp - 1]
+```
+
+#### Modern Cartesian
+
+MPI already supplies a method to construct the coordinates:
+
+```fortran
+call MPI_Cart_coords(comm, rank, 3, rank_coords, ierr)
+```
+
+## Fortran API
+
+Package layout:
+
+- `npy_dump_names` — pure name builder, no MPI, no I/O.
+- `npy_dump_field` — generic `mpi_dump_field` → `save_npy` (stdlib).
+
+```fortran
+call mpi_dump_field(field_name, rank_coords, array, stat, msg, directory=outdir)
+```
+
+| Argument | Meaning |
+|----------|---------|
+| `field_name` | Stem used in the basename |
+| `rank_coords(3)` | 0-based `(i,j,k)` in the process grid |
+| `array` | Rank-3 owned block (`real32`, `real64`, or `integer`) |
+| `stat` / `msg` | `stat /= 0` on failure; message when available |
+| `directory` | Optional output directory (default: current working directory) |
+
+Caller responsibilities:
+
+- Pass owned cells only - no halos, e.g. `field(1:nx,1:ny,1:nz)`.
+- Create the output directory if needed (and barrier before ranks write).
+- Check `stat` after every dump.
+- Choose filesystem-safe names (`cell_state`, not `"cell state"`).
+
+Depends on [fortran-lang/stdlib](https://github.com/fortran-lang/stdlib) `stdlib_io_npy` and MPI (`mpi_f08` in tests).
+
+## Python helpers
+
+Install the project env as you prefer (`uv sync`, `pip install -e .`, etc.). Helpers live under `helpers/` (or the package path you publish):
+
+| Module / script | Role |
+|-----------------|------|
+| `npy_names.py` | Format / parse / round-trip shard basenames |
+| `merge_npy_shards.py` | Discover shards for a field, merge equal slabs, optional `np.save` |
+| `check_mpi_npy_smoke.py` | Compare merged MPI smoke output to the analytic marker |
+| `viz_npy_field.py` | Quick 3-plane slices of a merged `.npy` |
+| `run_npy_tests.sh` | Serial ladder: unit checks, `fpm test`, MPI smoke, merge, check |
+
+Merge assumptions (v1):
+
+- One field per merge invocation.
+- All shards same local shape and dtype.
+- Full rectangular process grid (no holes, no duplicate coords).
+- Placement: global index `I = i_rank * nx + i_local` (and likewise for `j`, `k`), Fortran order.
+
+```sh
+python helpers/merge_npy_shards.py temperature _npy_mpi_smoke temperature_global.npy
+python helpers/check_mpi_npy_smoke.py _npy_mpi_smoke 2 2 1 3 4 5 temperature
+python helpers/viz_npy_field.py temperature_global.npy
+```
+
+## Marker convention (tests)
+
+Global 0-based indices `(I,J,K)`:
+
+```text
+v = 100*I + 10*J + K
+```
+
+(Use a larger leading coefficient if your global extent needs unique values beyond hundreds.) Serial and MPI tests must use the **same** formula as the Python checker.
+
+## Solver integration
+
+Not wired to any input deck. In the time loop (or a debug branch):
+
+```fortran
+call mpi_dump_field("temperature", rank_coords, T(1:nx,1:ny,1:nz), stat, msg, directory=dir)
+if (stat /= 0) then
+   ! log msg, abort or skip
+end if
+```
+
+Change variables by changing the array and the stem string. Multiple variables = multiple calls, each with its own stem. Optional `directory` can point at a timestep folder when you introduce one; the library does not invent that tree.
+
+## Build and test
+
+```sh
+fpm build --profile release
+fpm test --profile release
+# MPI smoke (example; match your launcher and process count to the test grid)
+fpm test --target test_npy_mpi_dump --profile release \
+  --runner mpirun --runner-args "-np 4"
+./helpers/run_npy_tests.sh
+```
+
+Default MPI smoke grid in-tree: `2×2×1` processes, local `3×4×5` → global `6×8×5`.
+
+## Design notes
+
+- **Rank-only filenames are insufficient** without a separate rank→coords map. Coords in the name keep merge self-describing.
+- **Offsets** assume a regular Euclidean grid with unit spacing for indexing; geometry is not stored in the `.npy`.
+- **4D multi-variable dumps** need request queuing and a packing convention; deferred. Prefer one 3D array per file.
 
 ## License
 
-The project is operating under an [MIT](./LICENSE) license. You are free to use, modify, and distribute the code as needed for your project. Feel free to adapt and customize it to suit your requirements.
+[MIT](./LICENSE)
 
-## Appendix
+## Funding
 
-### Project Directory Structure
+Developed as part of the [M³4Impact](https://www.gre.ac.uk/research/m34impact) project at the University of Greenwich.
 
-```sh
-$ tree -Ia '__pycache__|.git|.pytest_cache|.venv|build|.gen*|ford'
-.
-├── app  # The main program driver(s) resides here
-│   └── main.f90
-├── docs
-│   ├── MIGRATION.md
-│   ├── PROFILING.md
-│   ├── STYLE_GUIDE.md
-│   └── TOOLING.md
-├── .editorconfig
-├── ford.md  # FORD config file
-├── .fortls  # VSCode Modern Fortran config file
-├── fpm.rsp
-├── fpm.toml  # Fortran Package Manager config file
-├── .fprettify.rc  # fprettify config file
-├── .gitignore  # Git ignore list of files and directories
-├── LICENSE
-├── .pre-commit-config.yaml  # pre-commit config file
-├── profiling
-│   └── template_mpi.json
-├── pyproject.toml  # config file
-├── README.md  # you are here!
-├── src  # All source code files are placed in here, except main driver
-│   └── first_steps.f90
-├── test  # All tests are placed in here
-│   └── check.f90
-└── .vscode  # Holds VSCode configs and runtime/debugging tasks
-    ├── extensions.json  # simply populates the "Recommended" Extensions tab
-    └── settings.json  # also referred to as "Workspace Settings (JSON)"
-```
-
-### References and Links
-
-This repository takes a lot of inspiration (and actual code) from [easy](https://github.com/urbanjost/easy).
+## References
 
 - [`fpm`](https://github.com/fortran-lang/fpm)
 - [Modern Fortran extension](https://github.com/fortran-lang/vscode-fortran-support)
 - [`fortls`](https://github.com/fortran-lang/fortls)
-- [`fprettify`](https://github.com/pseewald/fprettify)
 - [`pre-commit`](https://pre-commit.com/)
-- [`ford`](https://github.com/Fortran-FOSS-Programmers/ford)
 - [`uv`](https://github.com/astral-sh/uv)
