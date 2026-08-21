@@ -81,9 +81,9 @@ Caller responsibilities:
 
 Depends on [fortran-lang/stdlib](https://github.com/fortran-lang/stdlib) `stdlib_io_npy` and MPI (`mpi_f08` in tests).
 
-## Python helpers
+## Python package `numpy_mpi`
 
-Install the project env as you prefer (`uv sync`, `pip install -e .`, etc.). Helpers live under `helpers/` (or the package path you publish):
+Install the project env as you prefer (`uv sync`, `uv pip install -e .`, etc.)
 
 | Module / script | Role |
 |-----------------|------|
@@ -101,9 +101,9 @@ Merge assumptions (v1):
 - Placement: global index `I = i_rank * nx + i_local` (and likewise for `j`, `k`), Fortran order.
 
 ```sh
-python helpers/merge_npy_shards.py temperature _npy_mpi_smoke temperature_global.npy
-python helpers/check_mpi_npy_smoke.py _npy_mpi_smoke 2 2 1 3 4 5 temperature
-python helpers/viz_npy_field.py temperature_global.npy
+python -m numpy_mpi.merge_npy_shards temperature _npy_mpi_smoke temperature_global.npy
+python -m numpy_mpi.check_mpi_npy_smoke _npy_mpi_smoke 2 2 1 3 4 5 temperature
+python -m numpy_mpi.viz_npy_field temperature_global.npy
 ```
 
 ## Marker convention (tests)
@@ -137,7 +137,7 @@ fpm test --profile release
 # MPI smoke (example; match your launcher and process count to the test grid)
 fpm test --target test_npy_mpi_dump --profile release \
   --runner mpirun --runner-args "-np 4"
-./helpers/run_npy_tests.sh
+./scripts/run_npy_tests.sh
 ```
 
 Default MPI smoke grid in-tree: `2×2×1` processes, local `3×4×5` → global `6×8×5`.

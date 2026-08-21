@@ -94,11 +94,11 @@ if __name__ == "__main__":
     args = sys.argv[1:]
     if not args:
         print(
-            "usage: python helpers/npy_names.py <name.npy> [more...]",
+            "usage: python -m numpy_mpi.npy_names <name.npy> [more...]",
             file=sys.stderr,
         )
         print(
-            "       python helpers/npy_names.py --format <field> <i> <j> <k>",
+            "       python -m numpy_mpi.npy_names --format <field> <i> <j> <k>",
             file=sys.stderr,
         )
         sys.exit(2)
@@ -107,7 +107,7 @@ if __name__ == "__main__":
     if args[0] == "--format":
         if len(args) != 5:
             print(
-                "usage: python helpers/npy_names.py --format <field> <i> <j> <k>",
+                "usage: python -m numpy_mpi.npy_names --format <field> <i> <j> <k>",
                 file=sys.stderr,
             )
             sys.exit(2)

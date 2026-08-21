@@ -21,7 +21,7 @@ def main() -> None:
     # usage: check_mpi_npy_smoke.py <dir> <npx> <npy> <npz> <nx> <ny> <nz> [field]
     if len(sys.argv) < 8:
         print(
-            "usage: python helpers/check_mpi_npy_smoke.py "
+            "usage: python -m numpy_mpi.check_mpi_npy_smoke "
             "<dir> <npx> <npy> <npz> <nx> <ny> <nz> [field]",
             file=sys.stderr,
         )

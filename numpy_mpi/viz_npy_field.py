@@ -1,9 +1,9 @@
 """Visualize a merged (or shard-dir) field for smoke verification.
 
 Examples:
-  python helpers/viz_npy_field.py merged.npy
-  python helpers/viz_npy_field.py _npy_mpi_smoke --field temperature --merge
-  python helpers/viz_npy_field.py merged.npy --out smoke_viz.png
+  python -m numpy_mpi.viz_npy_field merged.npy
+  python -m numpy_mpi.viz_npy_field _npy_mpi_smoke --field temperature --merge
+  python -m numpy_mpi.viz_npy_field merged.npy --out smoke_viz.png
 """
 import argparse
 import sys

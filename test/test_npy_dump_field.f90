@@ -1,7 +1,7 @@
 ! Serial smoke: npy_dump_field_sp with halo-owned slice + topology name.
 ! Python check (from repo root, after test writes cwd file):
-!   python helpers/npy_names.py temperature__i1_j2_k0.npy
-!   python helpers/check_npy_marker.py temperature__i1_j2_k0.npy
+!   python -m numpy_mpi.npy_names temperature__i1_j2_k0.npy
+!   python -m numpy_mpi.check_npy_marker temperature__i1_j2_k0.npy
 ! (marker values differ from rung-1 formula if you only check shape/dtype —
 !  this test uses the same 100*i+10*j+k local owned marker.)
 

@@ -1,10 +1,11 @@
-"""Tests for helpers.npy_names — encode the filename contract."""
+"""Tests for numpy_mpi.npy_names — encode the filename contract."""
+
 from __future__ import annotations
 
 import sys
 from pathlib import Path
 
-# Allow `python helpers/test_npy_names.py` from repo root without install.
+# Allow `python -m tests/test_npy_names` from repo root without install.
 _ROOT = Path(__file__).resolve().parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))

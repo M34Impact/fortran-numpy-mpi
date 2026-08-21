@@ -183,7 +183,7 @@ if __name__ == "__main__":
     args = sys.argv[1:]
     if len(args) < 2:
         print(
-            "usage: python helpers/merge_npy_shards.py <field> <dir> [out.npy]",
+            "usage: python -m numpy_mpi.merge_npy_shards <field> <dir> [out.npy]",
             file=sys.stderr,
         )
         sys.exit(2)

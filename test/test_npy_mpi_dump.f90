@@ -1,19 +1,19 @@
-! MPI smoke: each rank dumps owned SP slab; merge with helpers/merge_npy_shards.py
+! MPI smoke: each rank dumps owned SP slab; merge with merge_npy_shards.py
 ! Topology: MPI Cartesian, 0-based coords → filename (no legacy convert here).
 ! Equal local sizes. Marker: global 0-based I,J,K → v = 100*I + 10*J + K
 !
 ! Example (adjust runner to your cluster):
 !   fpm test --target test_npy_mpi_dump --profile release \
 !     --runner mpirun --runner-args "-np 4" --flag "-L./lib"
-!   python helpers/merge_npy_shards.py temperature _npy_mpi_smoke
-!   python helpers/check_mpi_npy_smoke.py _npy_mpi_smoke 2 2 1 3 4 5
+!   python -m numpy_mpi.merge_npy_shards temperature _npy_mpi_smoke
+!   python -m numpy_mpi.check_mpi_npy_smoke _npy_mpi_smoke 2 2 1 3 4 5
 !
 ! Default process grid 2x2x1, local 3x4x5 → global 6x8x5 (np must be 4).
 
 program test_npy_mpi_dump
    use, intrinsic :: iso_fortran_env, only: sp => real32, output_unit, error_unit
    use mpi_f08, only: MPI_Init, MPI_Comm_rank, MPI_Comm_size, MPI_COMM_WORLD, MPI_Cart_create, MPI_Cart_coords, MPI_Abort, &
-         MPI_Barrier, MPI_Finalize
+         MPI_Barrier, MPI_Finalize, MPI_Comm, MPI_Comm_free
    use npy_dump_field, only: mpi_dump_field
    implicit none(type, external)
 
@@ -97,7 +97,7 @@ program test_npy_mpi_dump
       write(output_unit, "(A,3i3)") "cart dims", npx, npy, npz
       write(output_unit, "(A,3i3)") "local nx ny nz", nx, ny, nz
       write(output_unit, "(A)") "dir " // outdir
-      write(output_unit, "(A)") "merge: python helpers/merge_npy_shards.py temperature " // outdir
+      write(output_unit, "(A)") "merge: python -m numpy_mpi.merge_npy_shards temperature " // outdir
    end if
 
    call MPI_Comm_free(comm_cart, ierr)
