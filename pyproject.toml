@@ -1,35 +1,28 @@
 [project]
-name = "fortran-project-template"
-version = "2024.0.1"
-description = "An opinionated one-stop shop for new and old Fortran projects, offering seamless compiling, building, packaging, linting, formatting, and more, with modern tools like FPM, pre-commit, fprettify, and ford."
+name = "fortran-numpy-mpi"
+version = "0.1.0"
+description = "Dump Euclidean 3D field data to numpy `.npy` files from MPI Fortran, then combine them easily for Python loading and manipulation."
 dependencies = [
-    "fpm",
-    "ford",
-    "graphviz",
+    "fpm==0.10.1",
+    "matplotlib>=3.11.1",
+    "numpy>=2.4.6",
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.11"
 authors = [
-  { name = "Your name", email = "your@email.com" },
+  { name = "Matthew Alexandrakis", email = "10999402+MatthAlex@users.noreply.github.com" },
 ]
 readme = "README.md"
 license = { file = "LICENSE" }
-keywords = ["fortran", "modern fortran", "mpi", "vscode"]
+keywords = ["fortran", "modern fortran", "mpi", "numpy"]
 classifiers = [
   "Development Status :: 4 - Beta",
+  "Programming Language :: Modern Fortran",
   "Programming Language :: Python",
 ]
 
 [project.optional-dependencies]
 dev = [
     "fortls",
-    "fprettify",
     "pre-commit",
     "fortitude-lint",
 ]
-
-[project.urls]
-Homepage = "https://github.com/MatthAlex/fortran-project-template"
-Documentation = "https://github.com/MatthAlex/fortran-project-template/README.md"
-Repository = "https://github.com/MatthAlex/fortran-project-template"
-"Bug Tracker" = "https://github.com/MatthAlex/fortran-project-template/issues"
-Changelog = "https://github.com/MatthAlex/fortran-project-template/master/CHANGELOG.md"

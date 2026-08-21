@@ -1,10 +1,10 @@
 # See https://pre-commit.com for more information
 # See https://pre-commit.com/hooks.html for more hooks
-default_install_hook_types: [pre-commit, pre-push]
+default_install_hook_types: [pre-commit]
 fail_fast: false
 repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v5.0.0
+  rev: v6.0.0
   hooks:
   - id: trailing-whitespace
   - id: end-of-file-fixer
@@ -13,40 +13,37 @@ repos:
   - id: check-added-large-files
   - id: check-merge-conflict
 
-- repo: https://github.com/fortran-lang/fprettify
-  rev: v0.3.7
+repos:
+- repo: https://github.com/PlasmaFAIR/fortitude-pre-commit
+  # Fortitude version.
+  rev: v0.7.5
   hooks:
-  - id: fprettify
-    name: auto-formatter for modern fortran source code
-    description: imposes strict whitespace formatting for modern (F90+) Fortran code
-    entry: fprettify -c .fprettify.rc
-    language: python
-    files: \.[fF]\d*$
+    - id: fortitude
+    #   args: ["--fix", "--unsafe-fixes", "--preview"]
+
+- repo: local
+  hooks:
+  - id: codee-format
+    name: Codee Format
+    entry: git codee-format
+    language: system
+    types: [file]
+    files: '\.(f|F|f90|F90|f95|F95)$'
 
 - repo: local
   hooks:
   - id: compile-fpm
     name: Test successful compilation with fpm
-    entry: fpm build
+    entry: fpm @debug_gcc
     language: system
     pass_filenames: false
     always_run: true
 
-- repo: local
-  hooks:
-  - id: test-fpm
-    name: Run tests with fpm
-    entry: fpm test
-    language: system
-    pass_filenames: false
-    always_run: true
-
-- repo: local
-  hooks:
-  - id: fortitude-lint
-    name: Run Fortitude linter
-    entry: fortitude check
-    language: system
-    pass_filenames: yes
-    always_run: true
-    files: \.[fF]\d*$
+# - repo: local
+#   hooks:
+#   - id: test-fpm
+#     name: Run tests with fpm
+#     entry: fpm test
+#     language: system
+#     pass_filenames: false
+#     always_run: true

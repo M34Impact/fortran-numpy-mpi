@@ -25,7 +25,7 @@
    "disable_diagnostics": false,
 
    "pp_suffixes": [],
-   "include_dirs": ["./generated_modules/"],
+   "include_dirs": [],
    "pp_defs": {},
 
    "symbol_skip_mem": false,
