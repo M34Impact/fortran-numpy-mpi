@@ -30,5 +30,6 @@ file-extensions = ["f90", "F90"]
 ignore =[
     "S232", # Whitespace included in 'in out'
     "S271", # Unsorted imports
+    "C051", # Trailing backslash (in comments)
     # "S291", # trailing decimal point in `real` literal `0._prec` ( still in preview )
 ]
