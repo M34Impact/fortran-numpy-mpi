@@ -4,7 +4,7 @@
 ! No MPI. No I/O.
 
 module npy_dump_names
-   implicit none
+   implicit none(type, external)
    private
    public :: make_npy_shard_name
 

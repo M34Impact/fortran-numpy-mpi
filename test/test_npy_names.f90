@@ -3,7 +3,7 @@
 program test_npy_names
    use, intrinsic :: iso_fortran_env, only: output_unit
    use npy_dump_names, only: make_npy_shard_name
-   implicit none
+   implicit none(type, external)
 
    character(len=:), allocatable :: name, msg
    integer :: mpi_coords(3)

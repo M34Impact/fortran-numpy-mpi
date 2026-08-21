@@ -29,6 +29,6 @@ line-length = 132
 file-extensions = ["f90", "F90"]
 ignore =[
     "S232", # Whitespace included in 'in out'
-    # "S271", # Unsorted imports ( still in preview )
+    "S271", # Unsorted imports
     # "S291", # trailing decimal point in `real` literal `0._prec` ( still in preview )
 ]

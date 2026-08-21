@@ -9,7 +9,7 @@ program test_npy_dump_field
    use, intrinsic :: iso_fortran_env, only: sp => real32, output_unit
    use stdlib_io_npy, only: load_npy
    use npy_dump_field, only: mpi_dump_field
-   implicit none
+   implicit none(type, external)
 
    integer, parameter :: nx = 3, ny = 4, nz = 5
    integer, parameter :: mpi_coords(3) = [1, 2, 0]

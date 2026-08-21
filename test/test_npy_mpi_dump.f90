@@ -12,9 +12,10 @@
 
 program test_npy_mpi_dump
    use, intrinsic :: iso_fortran_env, only: sp => real32, output_unit, error_unit
-   use mpi_f08
+   use mpi_f08, only: MPI_Init, MPI_Comm_rank, MPI_Comm_size, MPI_COMM_WORLD, MPI_Cart_create, MPI_Cart_coords, MPI_Abort, &
+         MPI_Barrier, MPI_Finalize
    use npy_dump_field, only: mpi_dump_field
-   implicit none
+   implicit none(type, external)
 
    integer, parameter :: ndims = 3
    integer, parameter :: npx = 2, npy = 2, npz = 1
