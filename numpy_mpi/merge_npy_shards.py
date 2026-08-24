@@ -7,6 +7,7 @@ Assumes:
 - axis order matches Fortran/NumPy a[i,j,k], no transpose
 - dtype preserved from shards (typically float32)
 """
+
 import sys
 from collections.abc import Iterable
 from pathlib import Path
@@ -179,7 +180,7 @@ def expected_global_marker(
     return g
 
 
-if __name__ == "__main__":
+def main():
     args = sys.argv[1:]
     if len(args) < 2:
         print(
@@ -204,3 +205,7 @@ if __name__ == "__main__":
         # Save without forcing C-order; use Fortran order via ndarray
         np.save(out_arg, g)
         print(f"wrote {out_arg}")
+
+
+if __name__ == "__main__":
+    main()

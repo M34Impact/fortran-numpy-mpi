@@ -1,5 +1,5 @@
 [project]
-name = "fortran-numpy-mpi"
+name = "numpy-mpi"
 version = "0.1.0"
 description = "Dump Euclidean 3D field data to numpy `.npy` files from MPI Fortran, then combine them easily for Python loading and manipulation."
 dependencies = [
@@ -16,21 +16,26 @@ license = { file = "LICENSE" }
 keywords = ["fortran", "modern fortran", "mpi", "numpy"]
 classifiers = [
   "Development Status :: 4 - Beta",
-  "Programming Language :: Modern Fortran",
   "Programming Language :: Python",
-]
-
-[project.optional-dependencies]
-dev = [
-    "fortls",
-    "pre-commit",
-    "fortitude-lint",
 ]
 
 [dependency-groups]
 dev = [
+    "fortls",
+    "pre-commit",
     "fortitude-lint>=0.9.2",
     "pytest>=9.1.1",
     "ruff>=0.16.4",
     "ty>=0.0.73",
 ]
+
+[project.scripts]
+merge-npy-shards = "numpy_mpi.merge_npy_shards:main"
+viz-npy-field = "numpy_mpi.viz_npy_field:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["numpy_mpi"]
