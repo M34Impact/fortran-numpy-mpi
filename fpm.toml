@@ -15,7 +15,7 @@ library = true
 
 [dependencies]
 mpi = "*"
-stdlib = "*"
+stdlib = { git = "https://github.com/fortran-lang/stdlib.git", branch = "stdlib-fpm" }
 
 [fortran]
 implicit-typing = true
